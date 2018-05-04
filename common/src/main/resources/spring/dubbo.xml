@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:dubbo="http://code.alibabatech.com/schema/dubbo" xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+
+    <dubbo:application name="delayqueue"/>
+    <dubbo:registry address="zookeeper://${dubbo-zk.address}"/>
+    <dubbo:protocol name="dubbo" accesslog="true"/>
+
+    <!--全局唯一主键服务-->
+    <dubbo:reference interface="com.treefinance.commonservice.uid.UidService" id="uidService" check="false"/>
+
+</beans>

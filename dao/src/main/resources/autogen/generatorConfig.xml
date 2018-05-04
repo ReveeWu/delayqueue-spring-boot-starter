@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<generatorConfiguration>
+
+    <context id="crmusercenter-dao" targetRuntime="MyBatis3">
+        <property name="mergeable" value="false"/>
+
+        <annotationConfig id="aes" annotationPackage="com.datatrees.commons.annotation.Encrypted"
+                          annotationValue="@Encrypted"/>
+
+        <annotationConfig id="rsa" annotationPackage="com.datatrees.commons.annotation.Encrypted"
+                          annotationValue="@Encrypted(value = CryptAlgorithm.RSA)">
+            <property name="package" value="com.datatrees.common.security.client.util.CryptAlgorithm"/>
+            <!-- 逗号分割依赖import -->
+        </annotationConfig>
+
+        <plugin type="org.mybatis.generator.plugins.RenameExampleClassPlugin">
+            <property name="searchString" value="Example$"/>
+            <property name="replaceString" value="Criteria"/>
+        </plugin>
+
+        <plugin type="org.mybatis.generator.plugins.RowBoundsPlugin"/>
+        <plugin type="org.mybatis.generator.plugins.ToStringPlugin"/>
+        <plugin type="org.mybatis.generator.plugins.SerializablePlugin"/>
+
+        <commentGenerator>
+            <property name="suppressDate" value="true"/>
+            <property name="suppressMethodComments" value="true"/>
+            <property name="suppressXMLComments" value="true"/>
+            <property name="suppressClassComments" value="true"/>
+            <!--<property name="suppressAllComments" value="true" />-->
+        </commentGenerator>
+
+        <!--database config-->
+        <jdbcConnection driverClass="com.mysql.jdbc.Driver"
+                        connectionURL="jdbc:mysql://192.168.5.241:3306/test_db"
+                        userId="root"
+                        password="dashu0701">
+        </jdbcConnection>
+
+        <!--配置domain包名-->
+        <javaModelGenerator targetPackage="com.treefinance.dao.domain.test"
+                            targetProject="src/main/java/"><!-- src/generated/java -->
+            <property name="enableSubPackages" value="true"/>
+            <property name="trimStrings" value="true"/>
+        </javaModelGenerator>
+
+        <!--配置mapper.xml 路径-->
+        <sqlMapGenerator targetPackage="test"
+                         targetProject="src/main/resources/sqlmap/"> <!-- src/generated/resources -->
+            <property name="enableSubPackages" value="true"/>
+        </sqlMapGenerator>
+
+        <!--配置mapper包名-->
+        <javaClientGenerator type="XMLMAPPER" targetPackage="com.treefinance.dao.mapper.test"
+                             targetProject="src/main/java/"> <!-- src/generated/java -->
+            <property name="enableSubPackages" value="true"/>
+        </javaClientGenerator>
+
+        <!--配置表-->
+        <table schema="test_db" tableName="t_test" domainObjectName="Test">
+            <property name="useActualColumnNames" value="true"/>
+        </table>
+
+    </context>
+
+</generatorConfiguration>
