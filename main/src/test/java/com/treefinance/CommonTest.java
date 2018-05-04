@@ -1,9 +1,9 @@
 package com.treefinance;
 
 import com.datatrees.common.security.client.util.CryptAlgorithm;
-import com.treefinance.common.utils.EncryptUtil;
-import com.treefinance.common.utils.UidGenerator;
-import com.treefinance.dao.mapper.test.TestMapper;
+import com.treefinance.delayqueue.common.utils.EncryptUtil;
+import com.treefinance.delayqueue.common.utils.UidGenerator;
+import com.treefinance.delayqueue.dao.mapper.test.TestMapper;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
