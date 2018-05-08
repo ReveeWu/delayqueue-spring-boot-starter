@@ -111,8 +111,21 @@
                 <artifactId>guid-service-facade</artifactId>
                 <version>${guid-service-facade.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>1.2.3</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>
@@ -185,9 +198,8 @@
     </distributionManagement>
   <modules>
     <module>main</module>
-    <module>dao</module>
     <module>service</module>
     <module>common</module>
-    <module>api</module>
+    <module>facade</module>
   </modules>
 </project>
