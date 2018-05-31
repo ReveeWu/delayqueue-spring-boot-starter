@@ -4,11 +4,7 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
             http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
 
-    <dubbo:application name="delayqueue"/>
-    <dubbo:registry address="zookeeper://${dubbo-zk.address}"/>
-    <dubbo:protocol name="dubbo" accesslog="true" port="21889"/>
-
-    <!--全局唯一主键服务-->
-    <dubbo:reference interface="com.treefinance.commonservice.uid.UidService" id="uidService" check="false"/>
-
+    <!--延时队列服务-->
+    <bean id="delayQueueService" class="com.treefinance.delayqueue.service.impl.DelayQueueServiceImpl"/>
+    <dubbo:service interface="com.treefinance.delayqueue.client.DelayQueueService" ref="delayQueueService" retries="0"/>
 </beans>
