@@ -1,25 +1,20 @@
 package com.treefinance;
 
+import com.alibaba.dubbo.config.annotation.Reference;
 import com.datatrees.common.security.client.util.CryptAlgorithm;
+import com.treefinance.commonservice.uid.UidService;
 import com.treefinance.delayqueue.common.utils.EncryptUtil;
 import com.treefinance.delayqueue.common.utils.UidGenerator;
-import com.treefinance.delayqueue.dao.mapper.test.TestMapper;
 import org.junit.Assert;
 import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * @author reveewu
  * @date 24/02/2018
  */
 public class CommonTest extends BaseTest {
-    @Autowired
-    private TestMapper testMapper;
-
-    @Test
-    public void mybatisTest() {
-        Assert.assertNotNull(testMapper.selectByExample(null));
-    }
+    @Reference
+    private UidService uidService;
 
     @Test
     public void uidTest() {

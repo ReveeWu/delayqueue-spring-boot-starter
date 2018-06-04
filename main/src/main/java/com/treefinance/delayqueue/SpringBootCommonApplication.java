@@ -1,6 +1,6 @@
 package com.treefinance.delayqueue;
 
-import org.mybatis.spring.annotation.MapperScan;
+import com.alibaba.dubbo.spring.boot.annotation.EnableDubboConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @date 23/02/2018
  */
 @SpringBootApplication
-@MapperScan(basePackages = {"com.treefinance.dao.mapper"})
+@EnableDubboConfiguration
 public class SpringBootCommonApplication {
     public static void main(String[] args) {
         SpringApplication.run(SpringBootCommonApplication.class, args);

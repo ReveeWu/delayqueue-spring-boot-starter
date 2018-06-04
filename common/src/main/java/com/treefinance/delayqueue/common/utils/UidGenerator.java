@@ -1,26 +1,24 @@
 package com.treefinance.delayqueue.common.utils;
 
-import com.treefinance.delayqueue.common.ApplicationContextProvider;
+import com.alibaba.dubbo.config.annotation.Reference;
 import com.treefinance.commonservice.uid.UidService;
+import com.treefinance.delayqueue.common.ApplicationContextProvider;
+import org.springframework.stereotype.Component;
 
 /**
  * @author reveewu
  * @date 08/12/2017
  */
+@Component
 public class UidGenerator {
-    public static volatile UidService uidService = null;
+    @Reference
+    public UidService uidService;
 
     public static long getId() {
-        if (null == uidService) {
-            uidService = ApplicationContextProvider.getBean(UidService.class);
-        }
-        return uidService.getId();
+        return ApplicationContextProvider.getBean(UidGenerator.class).uidService.getId();
     }
 
     public static long[] getIds(int size) {
-        if (null == uidService) {
-            uidService = ApplicationContextProvider.getBean(UidService.class);
-        }
-        return uidService.getIds(size);
+        return ApplicationContextProvider.getBean(UidGenerator.class).uidService.getIds(size);
     }
 }

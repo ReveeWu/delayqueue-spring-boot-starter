@@ -12,7 +12,7 @@ public interface ApplicationReadyListener extends ApplicationListener {
     @Override
     default void onApplicationEvent(ApplicationEvent event) {
         // 监听ApplicationReadyEvent
-        if (event instanceof ApplicationReadyEvent) {
+        if (event instanceof ApplicationReadyEvent && ((ApplicationReadyEvent) event).getApplicationContext().getParent() == null) {
             onApplicationReady();
         }
     }

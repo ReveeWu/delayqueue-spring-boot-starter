@@ -1,5 +1,6 @@
 package com.treefinance.delayqueue.service.impl;
 
+import com.alibaba.dubbo.config.annotation.Service;
 import com.alibaba.fastjson.JSON;
 import com.treefinance.delayqueue.client.DelayQueueService;
 import com.treefinance.delayqueue.client.bean.DelayMessage;
@@ -13,6 +14,8 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.util.Lists;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisOperations;
@@ -26,16 +29,22 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author reveewu
  * @date 04/05/2018
  */
 @Slf4j
+@Service(interfaceClass = DelayQueueService.class)
 @Component
 public class DelayQueueServiceImpl implements DelayQueueService, ApplicationReadyListener {
+    private static final String LOCK_NAME = "DELAY_QUEUE_SERVICE_READY_LOCK";
+
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private RedissonClient redissonClient;
 
     private ExecutorService ready2PullExecutor;
 
@@ -124,52 +133,67 @@ public class DelayQueueServiceImpl implements DelayQueueService, ApplicationRead
     }
 
     private void ready2PullHandler() {
+        RLock rLock = redissonClient.getLock(LOCK_NAME);
+
         while (!ready2PullExecutor.isShutdown()) {
             try {
-                // 从zset取出
-                Set<String> set = stringRedisTemplate
-                        .opsForZSet()
-                        .rangeByScore(Constant.ZSET_KEY, 0, System.currentTimeMillis(), 0, 100);
-                if (CollectionUtils.isEmpty(set)) {
-                    Thread.sleep(100);
-                    continue;
-                }
-
-                // 根据id读取元数据
-                List<Object> metaDataList = stringRedisTemplate.opsForHash().multiGet(Constant.META_DATA_KEY, Lists.newArrayList(set));
-
-                List<Object> re = stringRedisTemplate.execute(new SessionCallback<List<Object>>() {
-                    @Override
-                    public <K, V> List<Object> execute(RedisOperations<K, V> operations) throws DataAccessException {
-                        stringRedisTemplate.multi();
-
-                        metaDataList.forEach(data -> {
-                            DelayMessageExt messageExt = JSON.parseObject((String) data, DelayMessageExt.class);
-
-                            // 存入相应topic属下的list
-                            String key = Constant.getListKey(messageExt.getGroupName(), messageExt.getTopic());
-                            stringRedisTemplate.opsForList()
-                                    .rightPush(key, messageExt.getId());
-                            // 更新元数据状态
-                            messageExt.setStatus(Status.WAIT_CONSUME.name());
-                            stringRedisTemplate.opsForHash().put(Constant.META_DATA_KEY, messageExt.getId(), JSON.toJSONString(messageExt));
-                        });
-                        // 删除zset
-                        stringRedisTemplate.opsForZSet().remove(Constant.ZSET_KEY, set.toArray());
-
-                        List<Object> re = stringRedisTemplate.exec();
-
-                        return re;
+                if(rLock.tryLock(30,60, TimeUnit.SECONDS)) {
+                    // 从zset取出
+                    Set<String> set = stringRedisTemplate
+                            .opsForZSet()
+                            .rangeByScore(Constant.ZSET_KEY, 0, System.currentTimeMillis(), 0, 100);
+                    if (CollectionUtils.isEmpty(set)) {
+                        Thread.sleep(1000);
+                        continue;
                     }
-                });
-                if (log.isDebugEnabled()) {
-                    log.debug("multi exec result: {}", JSON.toJSONString(re));
-                }
+                    if (log.isDebugEnabled()) {
+                        log.debug("set size: {}", set.size());
+                    }
 
+                    // 根据id读取元数据
+                    List<Object> metaDataList = stringRedisTemplate.opsForHash().multiGet(Constant.META_DATA_KEY, Lists.newArrayList(set));
+                    if (log.isDebugEnabled()) {
+                        log.debug("metaDataList size: {}", metaDataList.size());
+                    }
+
+                    List<Object> re = stringRedisTemplate.execute(new SessionCallback<List<Object>>() {
+                        @Override
+                        public <K, V> List<Object> execute(RedisOperations<K, V> operations) throws DataAccessException {
+                            stringRedisTemplate.multi();
+
+                            metaDataList.forEach(data -> {
+                                DelayMessageExt messageExt = JSON.parseObject((String) data, DelayMessageExt.class);
+
+                                // 存入相应topic属下的list
+                                String key = Constant.getListKey(messageExt.getGroupName(), messageExt.getTopic());
+                                stringRedisTemplate.opsForList()
+                                        .rightPush(key, messageExt.getId());
+                                // 更新元数据状态
+                                messageExt.setStatus(Status.WAIT_CONSUME.name());
+                                stringRedisTemplate.opsForHash().put(Constant.META_DATA_KEY, messageExt.getId(), JSON.toJSONString(messageExt));
+                            });
+                            // 删除zset
+                            stringRedisTemplate.opsForZSet().remove(Constant.ZSET_KEY, set.toArray());
+
+                            List<Object> re = stringRedisTemplate.exec();
+
+                            return re;
+                        }
+                    });
+                    if (log.isDebugEnabled()) {
+                        log.debug("multi exec result: {}", JSON.toJSONString(re));
+                    }
+                }
 
             } catch (Exception e) {
                 log.error("ready2PullHandler Error!", e);
+            } finally {
+                if (rLock.isLocked()) {
+                    rLock.unlock();
+                }
             }
         }
     }
+
+
 }
