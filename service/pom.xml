@@ -7,23 +7,18 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>delayqueue-service</artifactId>
+    <artifactId>acrm-delayqueue-service</artifactId>
 
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>delayqueue-common</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>acrm-delayqueue-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>delayqueue-dao</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>delayqueue-facade</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>acrm-delayqueue-facade</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

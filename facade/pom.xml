@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>delayqueue-facade</artifactId>
+    <artifactId>acrm-delayqueue-facade</artifactId>
 
     <dependencies>
         <dependency>
@@ -19,7 +19,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>delayqueue-common</artifactId>
+            <artifactId>acrm-delayqueue-common</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
