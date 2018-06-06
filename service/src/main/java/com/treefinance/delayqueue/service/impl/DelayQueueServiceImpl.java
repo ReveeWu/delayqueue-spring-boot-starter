@@ -137,7 +137,7 @@ public class DelayQueueServiceImpl implements DelayQueueService, ApplicationRead
 
         while (!ready2PullExecutor.isShutdown()) {
             try {
-                if(rLock.tryLock(30,60, TimeUnit.SECONDS)) {
+                if(rLock.tryLock(60,60, TimeUnit.SECONDS)) {
                     // 从zset取出
                     Set<String> set = stringRedisTemplate
                             .opsForZSet()
