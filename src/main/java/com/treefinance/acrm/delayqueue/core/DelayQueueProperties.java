@@ -1,6 +1,7 @@
 package com.treefinance.acrm.delayqueue.core;
 
 import lombok.Data;
+import org.hibernate.validator.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -10,5 +11,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Data
 @ConfigurationProperties(prefix = "spring.delayqueue")
 public class DelayQueueProperties {
+    @NotBlank
     private String groupName;
 }
