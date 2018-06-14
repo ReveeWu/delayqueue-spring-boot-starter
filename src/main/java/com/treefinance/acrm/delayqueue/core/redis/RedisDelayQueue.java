@@ -214,8 +214,12 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
             } catch (Exception e) {
                 log.error("moveBrickHandler Error!", e);
             } finally {
-                if (rLock.isLocked()) {
-                    rLock.unlock();
+                try {
+                    if (rLock.isLocked()) {
+                        rLock.unlock();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
         }

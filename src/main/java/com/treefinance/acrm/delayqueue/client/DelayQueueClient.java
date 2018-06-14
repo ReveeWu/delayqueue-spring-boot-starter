@@ -9,9 +9,11 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * @author reveewu
@@ -21,32 +23,24 @@ import java.util.concurrent.TimeUnit;
  * 2. 定义消费抽象方法
  */
 @Slf4j
-public abstract class DelayQueueClient implements DisposableBean {
+public class DelayQueueClient implements DisposableBean {
     private IDelayQueue delayQueue;
-    private ScheduledExecutorService executorService;
+    private ConcurrentHashMap<String, ScheduledExecutorService> topicExecutorMap;
 
     public DelayQueueClient(IDelayQueue delayQueue) {
         this.delayQueue = delayQueue;
-
-        executorService = Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory(String.format("Delay-Queue-Client-%s-Thread", getTopic())));
-        executorService.scheduleWithFixedDelay(() -> pullThreadHandler(), 5, 0, TimeUnit.SECONDS);
+        this.topicExecutorMap = new ConcurrentHashMap<>();
     }
 
-    /**
-     * topic
-     *
-     * @return
-     */
-    abstract String getTopic();
-
-    /**
-     * 消费业务
-     *
-     * @param message
-     * @return
-     * @throws Exception
-     */
-    abstract ConsumeStatus consumeHandler(DelayMessageExt message) throws Exception;
+    public void registerTopicListener(String topic, Function<DelayMessageExt, ConsumeStatus> function) {
+        if (!topicExecutorMap.containsKey(topic)) {
+            ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(
+                    new DefaultThreadFactory(String.format("Delay-Queue-Client-%s-Thread", topic)));
+            executorService.scheduleWithFixedDelay(() ->
+                    pullThreadHandler(topic, function), 5, 1, TimeUnit.MILLISECONDS);
+            topicExecutorMap.put(topic, executorService);
+        }
+    }
 
     /**
      * 推送消息
@@ -61,8 +55,7 @@ public abstract class DelayQueueClient implements DisposableBean {
     /**
      * 消费端拉取后台线程
      */
-    private void pullThreadHandler() {
-        String topic = this.getTopic();
+    private void pullThreadHandler(String topic, Function<DelayMessageExt, ConsumeStatus> function) {
         DelayMessageExt delayMessageExt;
         try {
             delayMessageExt = delayQueue.pull(topic);
@@ -70,16 +63,16 @@ public abstract class DelayQueueClient implements DisposableBean {
                 return;
             }
         } catch (Exception e) {
-            log.error("拉取延时队列消息出错, topic: {} {}", topic, e);
+            log.error("拉取延时队列消息出错, topic: {}", topic, e);
             return;
         }
 
         try {
-            ConsumeStatus consumeStatus = this.consumeHandler(delayMessageExt);
+            ConsumeStatus consumeStatus = function.apply(delayMessageExt);
             delayQueue.callback(delayMessageExt, consumeStatus);
 
         } catch (Exception e) {
-            log.error("消费延时队列消息出错, topic: {} {}", topic, e);
+            log.error("消费延时队列消息出错, topic: {}", topic, e);
             delayQueue.callback(delayMessageExt, ConsumeStatus.RECONSUME);
         }
     }
@@ -87,9 +80,9 @@ public abstract class DelayQueueClient implements DisposableBean {
     @Override
     public void destroy() throws Exception {
         try {
-            executorService.shutdown();
+            topicExecutorMap.forEach((k, v) -> v.shutdown());
         } catch (Exception e) {
-            log.error("DelayQueueServiceShutdownHook error", e);
+            log.error("DelayQueueClientShutdown error", e);
         }
     }
 }

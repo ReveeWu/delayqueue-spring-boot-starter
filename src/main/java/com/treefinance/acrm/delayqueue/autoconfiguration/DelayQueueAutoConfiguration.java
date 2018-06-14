@@ -1,6 +1,8 @@
 package com.treefinance.acrm.delayqueue.autoconfiguration;
 
+import com.treefinance.acrm.delayqueue.client.DelayQueueClient;
 import com.treefinance.acrm.delayqueue.core.DelayQueueProperties;
+import com.treefinance.acrm.delayqueue.core.IDelayQueue;
 import com.treefinance.acrm.delayqueue.core.redis.RedisDelayQueue;
 import com.treefinance.acrm.delayqueue.migrate.MigrateUtil;
 import org.mvnsearch.spring.boot.redisson.RedissonAutoConfiguration;
@@ -26,6 +28,11 @@ public class DelayQueueAutoConfiguration {
     @Bean
     public RedisDelayQueue redisDelayQueue(@Autowired DelayQueueProperties properties, @Autowired StringRedisTemplate redisTemplate, @Autowired RedissonClient redissonClient) {
         return new RedisDelayQueue(properties, redisTemplate, redissonClient);
+    }
+
+    @Bean
+    public DelayQueueClient delayQueueClient(@Autowired IDelayQueue delayQueue) {
+        return new DelayQueueClient(delayQueue);
     }
 
     @Bean
