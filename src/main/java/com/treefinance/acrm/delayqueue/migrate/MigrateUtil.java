@@ -40,7 +40,7 @@ public class MigrateUtil {
             while (true) {
                 Set<ZSetOperations.TypedTuple<String>> set = stringRedisTemplate.opsForZSet().rangeWithScores(key, page * pageSize, (page + 1) * pageSize - 1);
                 log.info("start:{}, end:{}, size:{}", page * pageSize, (page + 1) * pageSize, set.size());
-                if (CollectionUtils.isEmpty(set) || set.size() < pageSize) {
+                if (CollectionUtils.isEmpty(set)) {
                     break;
                 }
 
