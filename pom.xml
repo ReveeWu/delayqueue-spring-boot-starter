@@ -5,7 +5,7 @@
     <groupId>com.treefinance.acrm</groupId>
     <artifactId>spring-boot-starter-delayqueue</artifactId>
     <packaging>jar</packaging>
-    <version>2.0-SNAPSHOT</version>
+    <version>2.1</version>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -16,7 +16,7 @@
     <properties>
         <commons-lang3.version>3.4</commons-lang3.version>
         <fastjson.version>1.2.3</fastjson.version>
-        <spring-boot-starter-redisson.version>3.3.2</spring-boot-starter-redisson.version>
+        <netty.version>4.1.7.Final</netty.version>
     </properties>
 
     <dependencies>
@@ -29,6 +29,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -51,11 +55,10 @@
             <artifactId>fastjson</artifactId>
             <version>${fastjson.version}</version>
         </dependency>
-        <!--redisson-->
         <dependency>
-            <groupId>com.github.linux-china</groupId>
-            <artifactId>spring-boot-starter-redisson</artifactId>
-            <version>${spring-boot-starter-redisson.version}</version>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
         </dependency>
     </dependencies>
 

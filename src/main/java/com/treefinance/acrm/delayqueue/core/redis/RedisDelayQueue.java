@@ -7,22 +7,17 @@ import com.treefinance.acrm.delayqueue.core.exception.DelayQueueException;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -33,43 +28,42 @@ import java.util.concurrent.TimeUnit;
 public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLineRunner {
     private DelayQueueProperties properties;
     private StringRedisTemplate stringRedisTemplate;
-    private RedissonClient redissonClient;
-
-    private ExecutorService ready2PullExecutor = null;
-
-    public RedisDelayQueue(DelayQueueProperties properties, StringRedisTemplate stringRedisTemplate, RedissonClient redissonClient) {
-        this.properties = properties;
-        this.stringRedisTemplate = stringRedisTemplate;
-        this.redissonClient = redissonClient;
-    }
 
     /**
-     * Invoked by a BeanFactory on destruction of a singleton.
-     *
-     * @throws Exception in case of shutdown errors.
-     *                   Exceptions will get logged but not rethrown to allow
-     *                   other beans to release their resources too.
+     * 搬砖线程
+     * 把到期的数据从zset搬到topic对应的list中等待消费
      */
+    private ExecutorService ready2PullExecutor = null;
+    /**
+     * 消费超时回收线程
+     * 把消费中超过1分钟的数据回收到list重新消费
+     */
+    private ScheduledExecutorService consumingTimeoutRecycleExecutor = null;
+
+    public RedisDelayQueue(DelayQueueProperties properties, StringRedisTemplate stringRedisTemplate) {
+        this.properties = properties;
+        this.stringRedisTemplate = stringRedisTemplate;
+    }
+
     @Override
     public void destroy() throws Exception {
         try {
             ready2PullExecutor.shutdown();
+            consumingTimeoutRecycleExecutor.shutdown();
         } catch (Exception e) {
             log.error("DelayQueueServiceShutdownHook error", e);
         }
     }
 
-    /**
-     * Callback used to run the bean.
-     *
-     * @param args incoming main method arguments
-     * @throws Exception on error
-     */
     @Override
     public void run(String... args) throws Exception {
         if (null == ready2PullExecutor) {
             ready2PullExecutor = Executors.newSingleThreadExecutor(new DefaultThreadFactory("DelayQueue-MoveBrick-Thread"));
             ready2PullExecutor.execute(() -> moveBrickHandler());
+        }
+        if (null == consumingTimeoutRecycleExecutor) {
+            consumingTimeoutRecycleExecutor = Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("DelayQueue-ConsumingTimeoutRecycle-Thread"));
+            consumingTimeoutRecycleExecutor.scheduleAtFixedRate(() -> consumingTimeoutRecycleHandler(), 5, 60, TimeUnit.SECONDS);
         }
     }
 
@@ -114,7 +108,11 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
     @Override
     public DelayMessageExt pull(String topic) throws DelayQueueException {
         String listKey = Constant.getListKey(properties.getGroupName(), topic);
-        String metaData = stringRedisTemplate.execute(RedisLuaScripts.PULL_SCRIPT, Arrays.asList(listKey, Constant.getMetaDataKey(properties.getGroupName())));
+        String consumingKey = Constant.getConsumingKey(properties.getGroupName());
+
+        String metaData = stringRedisTemplate.execute(RedisLuaScripts.PULL_SCRIPT,
+                Arrays.asList(listKey, Constant.getMetaDataKey(properties.getGroupName()), consumingKey),
+                String.valueOf(System.currentTimeMillis()));
         if (StringUtils.isNotBlank(metaData)) {
             DelayMessageExt messageExt = JSON.parseObject(metaData, DelayMessageExt.class);
             return messageExt;
@@ -127,8 +125,16 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
         switch (consumeStatus) {
             case SUCCESS:
             case FAIL:
-                // 如果成功，删除元数据
-                stringRedisTemplate.opsForHash().delete(Constant.getMetaDataKey(properties.getGroupName()), messageExt.getId());
+                // 如果成功，删除元数据&消费中数据
+                stringRedisTemplate.execute(new SessionCallback<Object>() {
+                    @Override
+                    public <K, V> Object execute(RedisOperations<K, V> operations) throws DataAccessException {
+                        stringRedisTemplate.multi();
+                        stringRedisTemplate.opsForZSet().remove(Constant.getConsumingKey(properties.getGroupName()), messageExt.getId());
+                        stringRedisTemplate.opsForHash().delete(Constant.getMetaDataKey(properties.getGroupName()), messageExt.getId());
+                        return stringRedisTemplate.exec();
+                    }
+                });
                 break;
             case RECONSUME:
                 // 如果重新消费，重新塞入zset，并更新元数据状态
@@ -158,70 +164,40 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
      * 把到期的数据从zset搬到topic对应的list，等待消费
      */
     private void moveBrickHandler() {
-        RLock rLock = redissonClient.getLock(Constant.getMoveBrickLockName(properties.getGroupName()));
+        String zsetKey = Constant.getZsetKey(properties.getGroupName());
+        String metaDataKey = Constant.getMetaDataKey(properties.getGroupName());
+        String listKeyFormat = Constant.getListKey(properties.getGroupName(), "");
 
         while (!ready2PullExecutor.isShutdown()) {
             try {
-                if (rLock.tryLock(60, 60, TimeUnit.SECONDS)) {
-                    // 从zset取出
-                    Set<String> set = stringRedisTemplate
-                            .opsForZSet()
-                            .rangeByScore(Constant.getZsetKey(properties.getGroupName()), 0, System.currentTimeMillis(), 0, 100);
-                    if (CollectionUtils.isEmpty(set)) {
-                        Thread.sleep(1000);
-                        continue;
-                    }
-                    if (log.isDebugEnabled()) {
-                        log.debug("set size: {}", set.size());
-                    }
+                Long size = stringRedisTemplate.execute(RedisLuaScripts.MOVE_BRICK_SCRIPT,
+                        Arrays.asList(zsetKey, metaDataKey, listKeyFormat),
+                        String.valueOf(System.currentTimeMillis()));
 
-                    // 根据id读取元数据
-                    List<Object> metaDataKeys = new ArrayList<>(set);
-                    List<Object> metaDataList = stringRedisTemplate.opsForHash().multiGet(Constant.getMetaDataKey(properties.getGroupName()), metaDataKeys);
-                    if (log.isDebugEnabled()) {
-                        log.debug("metaDataList size: {}", metaDataList.size());
-                    }
-
-                    List<Object> re = stringRedisTemplate.execute(new SessionCallback<List<Object>>() {
-                        @Override
-                        public <K, V> List<Object> execute(RedisOperations<K, V> operations) throws DataAccessException {
-                            stringRedisTemplate.multi();
-
-                            metaDataList.forEach(data -> {
-                                DelayMessageExt messageExt = JSON.parseObject((String) data, DelayMessageExt.class);
-
-                                // 存入相应topic属下的list
-                                String key = Constant.getListKey(messageExt.getGroupName(), messageExt.getTopic());
-                                stringRedisTemplate.opsForList()
-                                        .rightPush(key, messageExt.getId());
-                                // 更新元数据状态
-                                messageExt.setStatus(Status.WAIT_CONSUME.name());
-                                stringRedisTemplate.opsForHash().put(Constant.getMetaDataKey(properties.getGroupName()), messageExt.getId(), JSON.toJSONString(messageExt));
-                            });
-                            // 删除zset
-                            stringRedisTemplate.opsForZSet().remove(Constant.getZsetKey(properties.getGroupName()), set.toArray());
-
-                            List<Object> re = stringRedisTemplate.exec();
-
-                            return re;
-                        }
-                    });
-                    if (log.isDebugEnabled()) {
-                        log.debug("multi exec result: {}", JSON.toJSONString(re));
-                    }
+                if (size == null || size <= 0) {
+                    Thread.sleep(1000 * 1);
+                } else if (log.isDebugEnabled()){
+                    log.debug("move brick success size: {}", size);
                 }
-
             } catch (Exception e) {
                 log.error("moveBrickHandler Error!", e);
-            } finally {
-                try {
-                    if (rLock.isLocked()) {
-                        rLock.unlock();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
+        }
+    }
+
+    /**
+     * 回收消费超时数据(2分钟)
+     */
+    private void consumingTimeoutRecycleHandler() {
+        try {
+            String zsetKey = Constant.getZsetKey(properties.getGroupName());
+            String consumingKey = Constant.getConsumingKey(properties.getGroupName());
+
+            stringRedisTemplate.execute(RedisLuaScripts.RECYCLE_SCRIPT,
+                    Arrays.asList(zsetKey, consumingKey),
+                    String.valueOf(System.currentTimeMillis() - (1000 * 120)));
+        } catch (Exception e) {
+            log.error("回收消费超时数据出错", e);
         }
     }
 }
