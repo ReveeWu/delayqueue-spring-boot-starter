@@ -10,11 +10,13 @@ if expireKeys then
     for i,id in ipairs(expireKeys) do
         --读取元数据
         local metaData = redis.call("hget", metaDataKey, id)
-        local metaDataJson = cjson.decode(metaData)
-        --拼接list key
-        local listKey = listKeyFormat .. metaDataJson.topic
-        --插入list末尾
-        redis.call("rpush", listKey, id)
+        if metaData then
+            local metaDataJson = cjson.decode(metaData)
+            --拼接list key
+            local listKey = listKeyFormat .. metaDataJson.topic
+            --插入list末尾
+            redis.call("rpush", listKey, id)
+        end
         --删除zset
         redis.call("zrem", zsetKey, id)
     end
