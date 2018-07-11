@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.treefinance.acrm</groupId>
-    <artifactId>spring-boot-starter-delayqueue</artifactId>
+    <artifactId>delayqueue-spring-boot-starter</artifactId>
     <packaging>jar</packaging>
     <version>2.1</version>
 

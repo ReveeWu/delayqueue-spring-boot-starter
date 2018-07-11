@@ -1,1 +1,1 @@
-provides: spring-boot-starter-delayqueue
+provides: delayqueue-spring-boot-starter
