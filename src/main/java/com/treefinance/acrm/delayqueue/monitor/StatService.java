@@ -53,6 +53,11 @@ public class StatService {
             this.topic = arr[1];
             this.month = DateFormatUtils.format(new Date(score.longValue()), "yyyy-MM");
         }
+
+        @Override
+        public String toString() {
+            return String.format("%s:%s", topic, month);
+        }
     }
 
     @Data
