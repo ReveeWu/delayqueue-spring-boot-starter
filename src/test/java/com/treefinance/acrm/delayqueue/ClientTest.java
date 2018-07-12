@@ -3,6 +3,7 @@ package com.treefinance.acrm.delayqueue;
 import com.treefinance.acrm.delayqueue.client.DelayQueueClient;
 import com.treefinance.acrm.delayqueue.core.ConsumeStatus;
 import com.treefinance.acrm.delayqueue.core.DelayMessage;
+import com.treefinance.acrm.delayqueue.monitor.StatService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,8 @@ import java.util.concurrent.Executors;
 public class ClientTest {
     @Autowired
     private DelayQueueClient delayQueueClient;
+    @Autowired
+    private StatService statService;
 
     @Test
     public void test() throws Exception {
@@ -40,4 +43,10 @@ public class ClientTest {
             Thread.sleep(100);
         }
     }
+
+    @Test
+    public void testStat() throws Exception {
+        System.out.println( statService.stat());
+    }
+
 }
