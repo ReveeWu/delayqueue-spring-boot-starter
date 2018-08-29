@@ -6,7 +6,7 @@ local score = ARGV[3]
 local policy = ARGV[4]
 local result = 0
 
-if policy == "IGNORE"
+if policy == "IGNORE" or policy == "ADD"
 then
 	--如果不存在，保存元数据
 	result = redis.call("hsetnx", metaDataKey, id, metaData)

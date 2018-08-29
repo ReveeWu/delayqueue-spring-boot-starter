@@ -92,7 +92,6 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
         String messageExtId;
         if (PolicyEnum.ADD.equals(policy)) {
             messageExtId = String.format("%s:%s:%s:%s", messageExt.getGroupName(), messageExt.getTopic(), messageExt.getDataKey(), System.currentTimeMillis());
-            policy = PolicyEnum.IGNORE;
         } else {
             messageExtId = String.format("%s:%s:%s", messageExt.getGroupName(), messageExt.getTopic(), messageExt.getDataKey());
             if (null == policy) {
