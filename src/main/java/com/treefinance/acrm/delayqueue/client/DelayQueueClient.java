@@ -1,9 +1,6 @@
 package com.treefinance.acrm.delayqueue.client;
 
-import com.treefinance.acrm.delayqueue.core.ConsumeStatus;
-import com.treefinance.acrm.delayqueue.core.DelayMessage;
-import com.treefinance.acrm.delayqueue.core.DelayMessageExt;
-import com.treefinance.acrm.delayqueue.core.IDelayQueue;
+import com.treefinance.acrm.delayqueue.core.*;
 import com.treefinance.acrm.delayqueue.core.exception.DelayQueueException;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +47,17 @@ public class DelayQueueClient implements DisposableBean {
      */
     public void push(DelayMessage message) throws DelayQueueException {
         delayQueue.push(message);
+    }
+
+    /**
+     * 根据push策略推送消息
+     *
+     * @param message
+     * @param policy
+     * @throws DelayQueueException
+     */
+    public void push(DelayMessage message, PolicyEnum policy) throws DelayQueueException {
+        delayQueue.push(message, policy);
     }
 
     /**

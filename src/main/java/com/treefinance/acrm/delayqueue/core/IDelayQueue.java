@@ -18,6 +18,15 @@ public interface IDelayQueue {
     void push(DelayMessage message) throws DelayQueueException;
 
     /**
+     * 根据push策略推送数据到延时队列
+     *
+     * @param message
+     * @param policy
+     * @throws DelayQueueException
+     */
+    void push(DelayMessage message, PolicyEnum policy) throws DelayQueueException;
+
+    /**
      * 拉取到期数据
      *
      * @param topic

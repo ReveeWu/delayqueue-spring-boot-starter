@@ -76,6 +76,11 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
      */
     @Override
     public void push(DelayMessage message) throws DelayQueueException {
+        push(message, PolicyEnum.IGNORE);
+    }
+
+    @Override
+    public void push(DelayMessage message, PolicyEnum policy) throws DelayQueueException {
         // 消息转换
         DelayMessageExt messageExt = new DelayMessageExt();
         messageExt.setGroupName(properties.getGroupName());
@@ -84,7 +89,17 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
         messageExt.setBody(message.getBody());
         messageExt.setDelay(message.getDelay());
 
-        messageExt.setId(String.format("%s:%s:%s", messageExt.getGroupName(), messageExt.getTopic(), messageExt.getDataKey()));
+        String messageExtId;
+        if (PolicyEnum.ADD.equals(policy)) {
+            messageExtId = String.format("%s:%s:%s:%s", messageExt.getGroupName(), messageExt.getTopic(), messageExt.getDataKey(), System.currentTimeMillis());
+        } else {
+            messageExtId = String.format("%s:%s:%s", messageExt.getGroupName(), messageExt.getTopic(), messageExt.getDataKey());
+            if (null == policy) {
+                policy = PolicyEnum.IGNORE;
+            }
+        }
+
+        messageExt.setId(messageExtId);
         messageExt.setExecuteTime(messageExt.getCreateTime() + messageExt.getDelay());
         messageExt.setStatus(Status.WAIT_PULL.name());
 
@@ -92,7 +107,8 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
                 Arrays.asList(Constant.getZsetKey(properties.getGroupName()), Constant.getMetaDataKey(properties.getGroupName())),
                 messageExt.getId(),
                 JSON.toJSONString(messageExt),
-                String.valueOf(messageExt.getExecuteTime()));
+                String.valueOf(messageExt.getExecuteTime()),
+                policy.name());
 
         if (log.isDebugEnabled()) {
             log.debug("push result: {}", re);
