@@ -16,7 +16,7 @@ then
 	result = redis.call("hset", metaDataKey, id, metaData)
 end
 
-if result==1 then
+if result==1 or policy == "COVER" then
 	--如果保存元数据成功，则添加zset数据
 	result = redis.call("zadd", zsetKey, score, id)
 end
