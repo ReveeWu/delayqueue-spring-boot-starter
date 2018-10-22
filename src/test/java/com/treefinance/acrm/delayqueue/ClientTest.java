@@ -4,6 +4,7 @@ import com.treefinance.acrm.delayqueue.client.DelayQueueClient;
 import com.treefinance.acrm.delayqueue.core.ConsumeStatus;
 import com.treefinance.acrm.delayqueue.core.DelayMessage;
 import com.treefinance.acrm.delayqueue.monitor.StatService;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import java.util.concurrent.Executors;
  * @author reveewu
  * @date 20/06/2018
  */
+@Slf4j
 @SpringBootTest(classes = DemoApplication.class)
 @RunWith(SpringJUnit4ClassRunner.class)
 public class ClientTest {
@@ -39,7 +41,7 @@ public class ClientTest {
         });
 
         delayQueueClient.registerTopicListener("test",(messageExt)->{
-            System.out.println(messageExt.getBody());
+            System.out.println(Thread.currentThread().getName() + messageExt.toString());
             return ConsumeStatus.SUCCESS;
         });
 

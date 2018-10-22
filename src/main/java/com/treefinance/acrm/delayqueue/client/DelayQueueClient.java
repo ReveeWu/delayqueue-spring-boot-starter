@@ -5,10 +5,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 /**
@@ -20,8 +17,9 @@ import java.util.function.Function;
  */
 @Slf4j
 public class DelayQueueClient implements DisposableBean {
+    private final static Integer THREAD_COUNT = 48;
     private IDelayQueue delayQueue;
-    private ConcurrentHashMap<String, ScheduledExecutorService> topicExecutorMap;
+    private ConcurrentHashMap<String, ExecutorService> topicExecutorMap;
 
     public DelayQueueClient(IDelayQueue delayQueue) {
         this.delayQueue = delayQueue;
@@ -30,11 +28,16 @@ public class DelayQueueClient implements DisposableBean {
 
     public void registerTopicListener(String topic, Function<DelayMessageExt, ConsumeStatus> function) {
         if (!topicExecutorMap.containsKey(topic)) {
-            ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(
+            ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT,
                     new DefaultThreadFactory(String.format("Delay-Queue-Client-%s-Thread", topic)));
-            executorService.scheduleWithFixedDelay(() ->
-                    pullThreadHandler(topic, function), 5, 1, TimeUnit.MILLISECONDS);
             topicExecutorMap.put(topic, executorService);
+            for (int i = 0; i < THREAD_COUNT; i++) {
+                executorService.submit(() -> {
+                    while (true) {
+                        pullThreadHandler(topic, function);
+                    }
+                });
+            }
         }
     }
 
