@@ -1,7 +1,6 @@
 package com.treefinance.acrm.delayqueue.client;
 
 import com.treefinance.acrm.delayqueue.core.*;
-import com.treefinance.acrm.delayqueue.core.exception.DelayQueueException;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
@@ -43,9 +42,9 @@ public class DelayQueueClient implements DisposableBean {
      * 推送消息
      *
      * @param message
-     * @throws DelayQueueException
+     * @throws Exception
      */
-    public void push(DelayMessage message) throws DelayQueueException {
+    public void push(DelayMessage message) throws Exception {
         delayQueue.push(message);
     }
 
@@ -54,9 +53,9 @@ public class DelayQueueClient implements DisposableBean {
      *
      * @param message
      * @param policy
-     * @throws DelayQueueException
+     * @throws Exception
      */
-    public void push(DelayMessage message, PolicyEnum policy) throws DelayQueueException {
+    public void push(DelayMessage message, PolicyEnum policy) throws Exception {
         delayQueue.push(message, policy);
     }
 
@@ -81,7 +80,11 @@ public class DelayQueueClient implements DisposableBean {
 
         } catch (Exception e) {
             log.error("消费延时队列消息出错, topic: {}", topic, e);
-            delayQueue.callback(delayMessageExt, ConsumeStatus.RECONSUME);
+            try {
+                delayQueue.callback(delayMessageExt, ConsumeStatus.RECONSUME);
+            } catch (Exception e1) {
+                log.error("异常RECONSUME 出错，由回收队列处理, topic: {}", topic, e);
+            }
         }
     }
 

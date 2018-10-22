@@ -71,16 +71,15 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
      * 推送数据到延时队列
      *
      * @param message
-     * @throws DataExistsException
-     * @throws DelayQueueException
+     * @throws Exception
      */
     @Override
-    public void push(DelayMessage message) throws DelayQueueException {
+    public void push(DelayMessage message) throws Exception {
         push(message, PolicyEnum.IGNORE);
     }
 
     @Override
-    public void push(DelayMessage message, PolicyEnum policy) throws DelayQueueException {
+    public void push(DelayMessage message, PolicyEnum policy) throws Exception {
         // 消息转换
         DelayMessageExt messageExt = new DelayMessageExt();
         messageExt.setGroupName(properties.getGroupName());
@@ -122,7 +121,7 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
      * @return
      */
     @Override
-    public DelayMessageExt pull(String topic) throws DelayQueueException {
+    public DelayMessageExt pull(String topic) throws Exception {
         String listKey = Constant.getListKey(properties.getGroupName(), topic);
         String consumingKey = Constant.getConsumingKey(properties.getGroupName());
 
@@ -137,7 +136,7 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
     }
 
     @Override
-    public void callback(DelayMessageExt messageExt, ConsumeStatus consumeStatus) {
+    public void callback(DelayMessageExt messageExt, ConsumeStatus consumeStatus) throws Exception {
         switch (consumeStatus) {
             case SUCCESS:
             case FAIL:
