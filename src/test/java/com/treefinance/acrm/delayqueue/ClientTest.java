@@ -30,7 +30,11 @@ public class ClientTest {
         Executors.newSingleThreadExecutor().execute(()->{
             while (true) {
                 DelayMessage delayMessage = new DelayMessage("test", UUID.randomUUID().toString(), "test", 5000);
-                delayQueueClient.push(delayMessage);
+                try {
+                    delayQueueClient.push(delayMessage);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         });
 
