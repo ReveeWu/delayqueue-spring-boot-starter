@@ -28,16 +28,11 @@ public class DelayQueueClient implements DisposableBean {
 
     public void registerTopicListener(String topic, Function<DelayMessageExt, ConsumeStatus> function) {
         if (!topicExecutorMap.containsKey(topic)) {
-            ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT,
+            ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(
                     new DefaultThreadFactory(String.format("Delay-Queue-Client-%s-Thread", topic)));
+            executorService.scheduleWithFixedDelay(() ->
+                    pullThreadHandler(topic, function), 5, 1, TimeUnit.MILLISECONDS);
             topicExecutorMap.put(topic, executorService);
-            for (int i = 0; i < THREAD_COUNT; i++) {
-                executorService.submit(() -> {
-                    while (true) {
-                        pullThreadHandler(topic, function);
-                    }
-                });
-            }
         }
     }
 
