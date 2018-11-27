@@ -17,22 +17,37 @@ import java.util.function.Function;
  */
 @Slf4j
 public class DelayQueueClient implements DisposableBean {
-    private final static Integer THREAD_COUNT = 48;
+    private DelayQueueProperties properties;
+    private Integer topicConsumerThreadCount = 1;
     private IDelayQueue delayQueue;
     private ConcurrentHashMap<String, ExecutorService> topicExecutorMap;
 
-    public DelayQueueClient(IDelayQueue delayQueue) {
+    public DelayQueueClient(IDelayQueue delayQueue, DelayQueueProperties properties) {
+        this.properties = properties;
         this.delayQueue = delayQueue;
+        this.topicConsumerThreadCount = properties.getConsumerThreadCount();
         this.topicExecutorMap = new ConcurrentHashMap<>();
     }
 
     public void registerTopicListener(String topic, Function<DelayMessageExt, ConsumeStatus> function) {
         if (!topicExecutorMap.containsKey(topic)) {
-            ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(
+            ExecutorService executorService = Executors.newFixedThreadPool(this.topicConsumerThreadCount,
                     new DefaultThreadFactory(String.format("Delay-Queue-Client-%s-Thread", topic)));
-            executorService.scheduleWithFixedDelay(() ->
-                    pullThreadHandler(topic, function), 5, 1, TimeUnit.MILLISECONDS);
             topicExecutorMap.put(topic, executorService);
+            for (int i = 0; i < this.topicConsumerThreadCount; i++) {
+                executorService.submit(() -> {
+                    while (true) {
+                        if (!pullThreadHandler(topic, function)) {
+                            try {
+                                // 如果出错或没有数据，休眠1秒
+                                Thread.sleep(1000);
+                            } catch (Exception e) {
+                                log.error("error", e);
+                            }
+                        }
+                    }
+                });
+            }
         }
     }
 
@@ -60,22 +75,26 @@ public class DelayQueueClient implements DisposableBean {
     /**
      * 消费端拉取后台线程
      */
-    private void pullThreadHandler(String topic, Function<DelayMessageExt, ConsumeStatus> function) {
+    private boolean pullThreadHandler(String topic, Function<DelayMessageExt, ConsumeStatus> function) {
         DelayMessageExt delayMessageExt;
         try {
             delayMessageExt = delayQueue.pull(topic);
             if (null == delayMessageExt) {
-                return;
+                return false;
             }
         } catch (Exception e) {
             log.error("拉取延时队列消息出错, topic: {}", topic, e);
-            return;
+            return false;
         }
 
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("topic: {}, body: {}, delay: {}s", topic, delayMessageExt.getBody(), (System.currentTimeMillis() - delayMessageExt.getExecuteTime())/1000);
+            }
             ConsumeStatus consumeStatus = function.apply(delayMessageExt);
             delayQueue.callback(delayMessageExt, consumeStatus);
 
+            return true;
         } catch (Exception e) {
             log.error("消费延时队列消息出错, topic: {}", topic, e);
             try {
@@ -83,6 +102,7 @@ public class DelayQueueClient implements DisposableBean {
             } catch (Exception e1) {
                 log.error("异常RECONSUME 出错，由回收队列处理, topic: {}", topic, e);
             }
+            return false;
         }
     }
 

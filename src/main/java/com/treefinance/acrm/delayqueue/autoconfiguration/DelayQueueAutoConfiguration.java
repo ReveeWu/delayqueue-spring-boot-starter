@@ -29,8 +29,8 @@ public class DelayQueueAutoConfiguration {
     }
 
     @Bean
-    public DelayQueueClient delayQueueClient(@Autowired IDelayQueue delayQueue) {
-        return new DelayQueueClient(delayQueue);
+    public DelayQueueClient delayQueueClient(@Autowired IDelayQueue delayQueue, @Autowired DelayQueueProperties properties) {
+        return new DelayQueueClient(delayQueue, properties);
     }
 
     @Bean

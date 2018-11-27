@@ -11,6 +11,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Data
 @ConfigurationProperties(prefix = "spring.delayqueue")
 public class DelayQueueProperties {
+    /**
+     * 分组名
+     */
     @NotBlank
     private String groupName;
+
+    /**
+     * 消费者线程数
+     */
+    private Integer consumerThreadCount = 1;
 }
