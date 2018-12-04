@@ -42,6 +42,11 @@ public class ClientTest {
 
         delayQueueClient.registerTopicListener("test",(messageExt)->{
             System.out.println(Thread.currentThread().getName() + messageExt.toString());
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             return ConsumeStatus.SUCCESS;
         });
 

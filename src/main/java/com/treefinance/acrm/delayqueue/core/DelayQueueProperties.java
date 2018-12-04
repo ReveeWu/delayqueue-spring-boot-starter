@@ -20,5 +20,10 @@ public class DelayQueueProperties {
     /**
      * 消费者线程数
      */
-    private Integer consumerThreadCount = 1;
+    private Integer consumeThreadMin = 1;
+    private Integer consumeThreadMax = 8;
+    /**
+     * 消息队列阈值
+     */
+    private Integer pullThresholdCount = 2000;
 }
