@@ -132,8 +132,10 @@ public class DelayQueueClient implements DisposableBean {
             while (!this.isStoped()) {
                 try {
                     if (overload) {
-                        log.info("消费线程过载，睡眠10s，topic：{}", this.topic);
-                        Thread.sleep(10 * 1000);
+                        log.info("消费线程过载，拉取线程休息一下，topic：{}", this.topic);
+                        while (overload && consumeRequestQueue.remainingCapacity() < properties.getPullThresholdCount() / 2) {
+                            Thread.sleep(200);
+                        }
                         overload = false;
                     }
 
