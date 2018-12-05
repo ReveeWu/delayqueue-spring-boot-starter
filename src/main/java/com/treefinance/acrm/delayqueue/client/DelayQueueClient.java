@@ -104,7 +104,16 @@ public class DelayQueueClient implements DisposableBean {
     @Override
     public void destroy() throws Exception {
         try {
-            topicPullMessageServiceMap.forEach((k, v) -> v.stop());
+            topicPullMessageServiceMap.forEach((k, v) -> {
+                v.stop();
+                log.info("{} pull service stopped", k);
+            });
+        } catch (Exception e) {
+            log.error("DelayQueueClientShutdown error", e);
+        }
+        try {
+            consumeExecutor.shutdown();
+            log.info("consumeExecutor shutdown");
         } catch (Exception e) {
             log.error("DelayQueueClientShutdown error", e);
         }
