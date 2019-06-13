@@ -126,8 +126,10 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
         String metaData = stringRedisTemplate.execute(RedisLuaScripts.PULL_SCRIPT,
                 Arrays.asList(listKey, Constant.getMetaDataKey(properties.getGroupName()), consumingKey),
                 String.valueOf(System.currentTimeMillis()));
+        log.debug("metaData: {}", metaData);
         if (StringUtils.isNotBlank(metaData)) {
             DelayMessageExt messageExt = JSON.parseObject(metaData, DelayMessageExt.class);
+            log.debug("messageExt: {}", messageExt);
             return messageExt;
         }
         return null;
