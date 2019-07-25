@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.treefinance.acrm.delayqueue.core.*;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.dao.DataAccessException;
@@ -123,15 +122,29 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
         String listKey = Constant.getListKey(properties.getGroupName(), topic);
         String consumingKey = Constant.getConsumingKey(properties.getGroupName());
 
-        String metaData = stringRedisTemplate.execute(RedisLuaScripts.PULL_SCRIPT,
-                Arrays.asList(listKey, Constant.getMetaDataKey(properties.getGroupName()), consumingKey),
-                String.valueOf(System.currentTimeMillis()));
-        log.debug("metaData: {}", metaData);
-        if (StringUtils.isNotBlank(metaData)) {
-            DelayMessageExt messageExt = JSON.parseObject(metaData, DelayMessageExt.class);
-            log.debug("messageExt: {}", messageExt);
-            return messageExt;
+        String id = stringRedisTemplate.opsForList().leftPop(listKey, 30, TimeUnit.SECONDS);
+        if (null != id) {
+            // 加入消费中zset
+            stringRedisTemplate.opsForZSet().add(consumingKey, id, System.currentTimeMillis());
+            // 读取元数据
+            Object metadata = stringRedisTemplate.opsForHash().get(Constant.getMetaDataKey(properties.getGroupName()), id);
+            log.info("pulled metaData: {}", metadata);
+            if (null != metadata) {
+                DelayMessageExt messageExt = JSON.parseObject(metadata.toString(), DelayMessageExt.class);
+                log.debug("messageExt: {}", messageExt);
+                return messageExt;
+            }
         }
+
+//        String metaData = stringRedisTemplate.execute(RedisLuaScripts.PULL_SCRIPT,
+//                Arrays.asList(listKey, Constant.getMetaDataKey(properties.getGroupName()), consumingKey),
+//                String.valueOf(System.currentTimeMillis()));
+//        log.info("pulled metaData: {}", metaData);
+//        if (StringUtils.isNotBlank(metaData)) {
+//            DelayMessageExt messageExt = JSON.parseObject(metaData, DelayMessageExt.class);
+//            log.debug("messageExt: {}", messageExt);
+//            return messageExt;
+//        }
         return null;
     }
 
@@ -191,8 +204,8 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
 
                 if (size == null || size <= 0) {
                     Thread.sleep(1000 * 1);
-                } else if (log.isDebugEnabled()){
-                    log.debug("move brick success size: {}", size);
+                } else {
+                    log.info("move brick success size: {}", size);
                 }
             } catch (Exception e) {
                 log.error("moveBrickHandler Error!", e);

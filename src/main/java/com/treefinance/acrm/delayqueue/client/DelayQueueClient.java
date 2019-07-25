@@ -141,8 +141,8 @@ public class DelayQueueClient implements DisposableBean {
 
                     DelayMessageExt delayMessageExt = delayQueue.pull(topic);
                     if (null == delayMessageExt) {
-                        // 如果出错或没有数据，休眠100毫秒
-                        Thread.sleep(100);
+                        // 如果出错或没有数据，休眠500毫秒
+                        Thread.sleep(500);
                         continue;
                     }
 
