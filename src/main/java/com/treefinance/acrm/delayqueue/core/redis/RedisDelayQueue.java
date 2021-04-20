@@ -123,6 +123,7 @@ public class RedisDelayQueue implements IDelayQueue, DisposableBean, CommandLine
         String consumingKey = Constant.getConsumingKey(properties.getGroupName());
 
         String id = stringRedisTemplate.opsForList().leftPop(listKey, 30, TimeUnit.SECONDS);
+        log.info("pulled id: {}", id);
         if (null != id) {
             // 加入消费中zset
             stringRedisTemplate.opsForZSet().add(consumingKey, id, System.currentTimeMillis());
