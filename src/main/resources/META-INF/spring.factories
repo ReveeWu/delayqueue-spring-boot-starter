@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
- com.treefinance.acrm.delayqueue.autoconfiguration.DelayQueueAutoConfiguration
+ com.github.reveewu.delayqueue.autoconfiguration.DelayQueueAutoConfiguration

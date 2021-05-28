@@ -3,7 +3,7 @@
 
 ```xml
 <dependency>
-    <groupId>com.treefinance.acrm</groupId>
+    <groupId>com.github.reveewu</groupId>
     <artifactId>delayqueue-spring-boot-starter</artifactId>
     <version>2.0-SNAPSHOT</version>
 </dependency>
